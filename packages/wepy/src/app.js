@@ -158,6 +158,9 @@ export default class {
                             obj = obj || {};
                             if (self.$interceptors[key] && self.$interceptors[key].config) {
                                 let rst = self.$interceptors[key].config.call(self, obj);
+                                if (rst === undefined) {
+                                    return
+                                }
                                 if (rst === false) {
                                     if (self.$addons.promisify) {
                                         return Promise.reject('aborted by interceptor');
