@@ -115,25 +115,47 @@ export default {
         }
         return this._cacheReferences[filepath] || [];
     },
+    _watchEvts: ['change', 'add', 'unlink'],
     watch (cmd) {
         cmd.watch = false;
 
         let wepyrc = util.getConfig();
         let src = cmd.source || wepyrc.src || 'src';
-        let dist = cmd.target || wepyrc.target || 'dist';
+
         chokidar.watch(`.${path.sep}${src}`, wepyrc.watchOption || {}).on('all', (evt, filepath) => {
-            if ((evt === 'change' || evt === 'add') && watchReady && !preventDup[filepath]) {
-                preventDup[filepath] = evt;
+            if (this._watchEvts.indexOf(evt) === -1 || !watchReady || preventDup[filepath]) {
+                return
+            }
+            preventDup[filepath] = evt;
+            if (evt === 'change' || evt === 'add') {
                 cmd.file = path.relative(src, filepath);
                 util.log('文件: ' + filepath, '变更');
                 this.build(cmd);
-                setTimeout(() => {
-                    preventDup[filepath] = false;
-                }, 500);
+            }else if(evt === 'unlink'){
+                cmd.file = path.relative(src, filepath);
+                util.log('文件: ' + filepath, '删除');
+                this.unlink(cmd);
             }
+            setTimeout(() => {
+                preventDup[filepath] = false;
+            }, 500);
         }).on('ready', () => {
             watchReady = true;
             util.log('开始监听文件改动。', '信息');
+        });
+    },
+    unlink (cmd) {
+        let wepyrc = util.getConfig();
+
+        let dist = cmd.target || wepyrc.target || 'dist';
+        let target = path.parse(path.join(util.currentDir, dist, cmd.file));
+        
+        util.getFiles(target.dir).filter(file => {
+            return path.parse(file).name === target.name
+        }).forEach(file => {
+            file = path.relative(util.currentDir, path.join(target.dir, file))
+            util.unlink(file);
+            util.log('文件: ' + file, '删除');
         });
     },
     checkCompiler (compilers) {
