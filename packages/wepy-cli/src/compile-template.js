@@ -413,11 +413,11 @@ export default {
             repeat.tagName = 'block';
             let val = repeat.getAttribute('for');
             if (val) {
-                repeat.setAttribute(tagprefix + ':for', val);
+                repeat.setAttribute(tagprefix + 'for', val);
                 repeat.removeAttribute('for');
                 ['index', 'item', 'key'].forEach(attr => {
                     let val = repeat.getAttribute(attr);
-                    let tag = attr === 'key' ? `${tagprefix}:key` : `${tagprefix}:for-${attr}`;
+                    let tag = attr === 'key' ? `${tagprefix}key` : `${tagprefix}for-${attr}`;
                     val = val || attr;
                     forDetail[attr] = val;
                     if (prefix) {
@@ -491,7 +491,7 @@ export default {
         componentElements.forEach((com) => {
             let comid, definePath, isCustom = false, comAttributes = {};
             [].slice.call(com.attributes || []).forEach((attr) => {
-                if (['hidden', tagprefix + ':if', tagprefix + ':elif', tagprefix + ':else', 'class'].indexOf(attr.name) > -1) {
+                if (['hidden', tagprefix + 'if', tagprefix + 'elif', tagprefix + 'else', 'class'].indexOf(attr.name) > -1) {
                     comAttributes[attr.name] = attr.value;
                 }
             });
