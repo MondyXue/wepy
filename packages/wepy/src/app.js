@@ -156,10 +156,10 @@ export default class {
                     get () {
                         return (obj) => {
                             obj = obj || {};
-                            if (self.$interceptors[key] && self.$interceptors[key].config) {
+                            if (!obj.greenChannel && self.$interceptors[key] && self.$interceptors[key].config) {
                                 let rst = self.$interceptors[key].config.call(self, obj);
                                 if (rst === undefined) {
-                                    return
+                                    return;
                                 }
                                 if (rst === false) {
                                     if (self.$addons.promisify) {
