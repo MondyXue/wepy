@@ -28,6 +28,12 @@ export default class extends component {
             $parent.$wxapp = getApp();
         }
         this.$wxapp = $parent.$wxapp;
+
+        this.config = this.config || {}
+        for (const name in $parent.config.window) {
+          !(name in this.config) && (this.config[name] = $parent.config.window[name])
+        }
+
         super.$init(wxpage, this);
     }
 
