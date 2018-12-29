@@ -402,6 +402,35 @@ function nextTick (cb, ctx) {
   }
 }
 
+var renderCallbacks = [];
+
+function renderFlushCallbacks () {
+  var copies = renderCallbacks.slice(0);
+  renderCallbacks.length = 0;
+  for (var i = 0; i < copies.length; i++) {
+    copies[i]();
+  }
+}
+
+function renderNextTick (cb, ctx) {
+  var _resolve;
+  renderCallbacks.push(function () {
+    if (cb) {
+      try {
+        cb.call(ctx);
+      } catch (e) {
+        handleError(e, ctx, 'nextTick');
+      }
+    } else if (_resolve) {
+      _resolve(ctx);
+    }
+  });
+
+  if (!cb && typeof Promise !== 'undefined') {
+    return new Promise(function (resolve) { _resolve = resolve; });
+  }
+}
+
 /**
  * Parse a v-model expression into a base path and a final key segment.
  * Handles both dot-path and possible square brackets.
@@ -1502,7 +1531,17 @@ var WepyPage = (function (WepyComponent$$1) {
     this.$route('redirect', url, params);
   };
 
-  WepyPage.prototype.$back = function $back () {};
+  WepyPage.prototype.$back = function $back (p) {
+    if ( p === void 0 ) p = {};
+
+    if (isNum(p))
+      { p = { delta: p }; }
+
+    if (!p.delta)
+      { p.delta = 1; }
+
+    return wx.navigateBack(p);
+  };
 
   WepyPage.prototype.$route = function $route (type, url, params) {
     if ( params === void 0 ) params = {};
@@ -1571,7 +1610,7 @@ function initRender (vm, keys) {
 
       // vm._fromSelf = true;
       if (dirty) {
-        vm.$wx.setData(dirty);
+        vm.$wx.setData(dirty, renderFlushCallbacks);
       }
     }
     vm._init = true;
@@ -2023,8 +2062,6 @@ function patchLifecycle (output, options, rel, isComponent) {
       }
 
       // TODO: page attached
-      console.log('TODO: page attached');
-
       return callUserMethod(vm, vm.$options, 'attached', args);
     };
 
@@ -2124,12 +2161,10 @@ function patchLifecycle (output, options, rel, isComponent) {
 
   output.ready = function () {
     // TODO: ready
-    console.log('TODO: ready');
   };
 
   output.moved = function () {
     // TODO: moved
-    console.log('TODO: moved');
   };
 }
 
@@ -2322,7 +2357,9 @@ Object.assign(wepy, {
 
   // global apis
   use: use,
-  mixin: mixin
+  mixin: mixin,
+
+  nextTick: renderNextTick
 });
 
 module.exports = wepy;

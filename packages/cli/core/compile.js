@@ -41,6 +41,7 @@ class Compile extends Hook {
 
     this.clear();
     this.resolvers = {};
+    this.running = false;
 
     this.context = process.cwd();
 
@@ -164,6 +165,11 @@ class Compile extends Hook {
 
   start () {
 
+    if (this.running) {
+      return;
+    }
+    this.running = true;
+
     this.hookUnique('wepy-parser-wpy', { path: this.options.entry, type: 'app' }).then(app => {
 
       let sfc = app.sfc;
@@ -245,12 +251,14 @@ class Compile extends Hook {
     }).then(() => {
       this.hookUnique('output-static')
     }).then(() => {
+      this.running = false;
       this.logger.info('process finished');
       if (this.options.watch) {
         this.logger.info('watching...');
         this.watch();
       }
     }).catch(e => {
+      this.running = false;
       if (e.message !== 'EXIT') {
         this.logger.error(e);
       }
@@ -359,7 +367,7 @@ class Compile extends Hook {
 
         this.hookAsyncSeq('output-file', { filename, code }).then(({ filename, code }) => {
           logger.silly('output', 'write file: ' + filename);
-          fs.outputFile(filename, sfc[k].outputCode, function (err) {
+          fs.outputFile(filename, code, function (err) {
             if (err) {
               console.log(err);
             }
