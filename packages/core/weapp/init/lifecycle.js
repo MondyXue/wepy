@@ -53,6 +53,9 @@ export function patchAppLifecycle (appConfig, options, rel) {
     if (!('options' in this)) {
       this.options = args && args.length ? args[0] : {}
     }
+    if (typeof options.config === 'object') {
+      this.$config = options.config
+    }
 
     initHooks(vm, options.hooks);
 
@@ -102,6 +105,16 @@ export function patchLifecycle (output, options, rel, isComponent) {
     if (!isComponent) {
       vm.$root = vm;
       vm.$app = app;
+      const appConfig = app.$options.config
+      const pageConfig = options.config
+      if (typeof pageConfig === 'object' && typeof appConfig === 'object' && typeof appConfig.window === 'object' ) {
+        for (const name in appConfig.window) {
+          if (!(name in pageConfig)) {
+            pageConfig[name] = appConfig.window[name]
+          }
+        }
+        this.$config = pageConfig
+      }
     }
 
     vm.$id = ++comid + (isComponent ? '.1' : '.0');
