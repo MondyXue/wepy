@@ -15,6 +15,7 @@ import { initMethods } from './methods';
 import { initEvents } from './events';
 import { isStr, isArr, isFunc } from '../../shared/index';
 import Dirty from '../class/Dirty';
+import Base from '../class/Base';
 
 
 let comid = 0;
@@ -55,6 +56,16 @@ export function patchAppLifecycle (appConfig, options, rel) {
     }
     if (typeof options.config === 'object') {
       this.$config = options.config
+    }
+
+    Base.getApp = () => app
+    Base.getCurrentPages = () => {
+      const pages = getCurrentPages();
+      return pages && pages.length ? pages.map(page => page.$wepy) : null;
+    }
+    Base.getCurrentPage = () => {
+      const pages = getCurrentPages();
+      return pages && pages.length ? pages[pages.length - 1].$wepy : null;
     }
 
     initHooks(vm, options.hooks);
