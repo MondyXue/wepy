@@ -5,7 +5,7 @@ import { observe } from './../observer/index';
 import { proxy } from './data';
 import Watcher from './../observer/watcher';
 import $global from './../global';
-import { initHooks } from './hooks';
+import { initHooks, callUserHook } from './hooks';
 import { initProps } from './props';
 import { initWatch } from './watch';
 import { initRender } from './render';
@@ -21,17 +21,17 @@ let comid = 0;
 let app;
 
 
-const callUserMethod = function (vm, userOpt, method, args) {
+const callUserMethod = function (vm, userOpt, methodName, args = [], hook) {
   let result;
-  let methods = userOpt[method];
-  if (isFunc(methods)) {
-    result = userOpt[method].apply(vm, args);
-  } else if (isArr(methods)) {
-    for (let i in methods) {
-      if (isFunc(methods[i])) {
-        result = methods[i].apply(vm, args);
-      }
-    }
+  let method = userOpt[methodName];
+  if (hook) {
+    args = callUserHook(vm, `before-${methodName}`, args);
+  }
+  if (isFunc(method)) {
+    result = method.apply(vm, args);
+  }
+  if (hook) {
+    result = callUserHook(vm, `after-${methodName}`, args, result);
   }
   return result;
 };
@@ -54,14 +54,12 @@ export function patchAppLifecycle (appConfig, options, rel) {
 
     initMethods(vm, options.methods);
 
-    return callUserMethod(vm, vm.$options, 'onLaunch', args);
+    return callUserMethod(vm, vm.$options, 'onLaunch', args, true);
   };
 
   ['onShow', 'onHide', 'onError', 'onPageNotFound'].forEach(k => {
-    if (options[k] && isFunc(options[k])) {
-      appConfig[k] = function (...args) {
-        return callUserMethod(app, app.$options, k, args);
-      }
+    appConfig[k] = function (...args) {
+      return callUserMethod(app, app.$options, k, args, true);
     }
   });
 };
@@ -125,7 +123,7 @@ export function patchLifecycle (output, options, rel, isComponent) {
     // not need to patch computed to ouput
     initComputed(vm, options.computed, true);
 
-    return callUserMethod(vm, vm.$options, 'created', args);
+    return callUserMethod(vm, vm.$options, 'created', args, true);
   };
 
   output.created = initLifecycle;
@@ -141,7 +139,7 @@ export function patchLifecycle (output, options, rel, isComponent) {
 
       Object.keys(outProps).forEach(k => vm[k] = acceptProps[k]);
 
-      return callUserMethod(vm, vm.$options, 'attached', args);
+      return callUserMethod(vm, vm.$options, 'attached', args, true);
     };
   } else {
     output.attached = function (...args) { // Page attached
@@ -158,7 +156,7 @@ export function patchLifecycle (output, options, rel, isComponent) {
       }
 
       // TODO: page attached
-      return callUserMethod(vm, vm.$options, 'attached', args);
+      return callUserMethod(vm, vm.$options, 'attached', args, true);
     }
 
     // Page lifecycle will be called under methods
@@ -176,55 +174,55 @@ export function patchLifecycle (output, options, rel, isComponent) {
     pageLifecycle.onLoad = function (...args) {
       // TODO: onLoad
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onLoad', args);
+      return callUserMethod(vm, vm.$options, 'onLoad', args, true);
     }
 
     pageLifecycle.onShow = function (...args) {
       // TODO: onShow
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onShow', args);
+      return callUserMethod(vm, vm.$options, 'onShow', args, true);
     }
 
     pageLifecycle.onHide = function (...args) {
       // TODO: onHide
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onHide', args);
+      return callUserMethod(vm, vm.$options, 'onHide', args, true);
     }
 
     pageLifecycle.onUnload = function (...args) {
       // TODO: onUnload
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onUnload', args);
+      return callUserMethod(vm, vm.$options, 'onUnload', args, true);
     }
 
     pageLifecycle.onPullDownRefresh = function (...args) {
       // TODO: onPullDownRefresh
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onPullDownRefresh', args);
+      return callUserMethod(vm, vm.$options, 'onPullDownRefresh', args, true);
     }
 
     pageLifecycle.onReachBottom = function (...args) {
       // TODO: onReachBottom
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onReachBottom', args);
+      return callUserMethod(vm, vm.$options, 'onReachBottom', args, true);
     }
 
     pageLifecycle.onShareAppMessage = function (...args) {
       // TODO: onShareAppMessage
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onShareAppMessage', args);
+      return callUserMethod(vm, vm.$options, 'onShareAppMessage', args, true);
     }
 
     pageLifecycle.onPageScroll = function (...args) {
       // TODO: onPageScroll
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onPageScroll', args);
+      return callUserMethod(vm, vm.$options, 'onPageScroll', args, true);
     }
 
     pageLifecycle.onTabItemTap = function (...args) {
       // TODO: onTabItemTap
       let vm = this.$wepy;
-      return callUserMethod(vm, vm.$options, 'onTabItemTap', args);
+      return callUserMethod(vm, vm.$options, 'onTabItemTap', args, true);
     }
   }
 
