@@ -50,6 +50,10 @@ export function patchAppLifecycle (appConfig, options, rel) {
     vm.$wx = this;
     this.$wepy = vm;
 
+    if (!('options' in this)) {
+      this.options = args && args.length ? args[0] : {}
+    }
+
     initHooks(vm, options.hooks);
 
     initMethods(vm, options.methods);
