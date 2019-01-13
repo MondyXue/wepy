@@ -1,17 +1,23 @@
-const { isArr, isFunc } = require('../util/tools');
+const { isStr, isFunc } = require('../util/tools');
 
 function checkPlugins (ins, plugins) {
-  if (!isArr(plugins)) {
-    plugins = [plugins];
-  }
-  plugins.forEach((plg, index) => {
-    // ensure plugin is a function
+  plugins = plugins.map(plg => {
+    // ensure plugin is valid
     // or process would be exit
-    if (!isFunc(plg)) {
+    try {
+      if (isStr(plg)) {
+        plg = { src: plg }
+      }
+      plg.fn = require(plg.src)
+      if (!isFunc(plg.fn)) {
+        throw 'Plugin must be a function.'
+      }
+      return plg
+    } catch (error) {
       ins.logger.error(
         'init',
-        'Plugins init error, plugin must be a function.\n' +
-        'Please check your plugin in wepy.config.js file'
+        'Plugins init error, please check your plugin in wepy.config.js file.\n' +
+        error
       );
       throw new Error('EXIT');
     }
@@ -46,7 +52,9 @@ exports = module.exports = function (ins) {
 
   ].map(v => require(v).call(ins));
   // check custom plugins
-  const customPluginFns = checkPlugins(ins, ins.options.plugins);
+  const customPlugins = checkPlugins(ins, ins.options.plugins)
+  
+  customPlugins.forEach(plg => ins.register(plg.src, plg.fn));
 
-  customPluginFns.map(fn => fn.call(ins));
+  ins.register('before-output-file', item => customPlugins.forEach(plg => ins.hookSeq(plg.src, plg.config, item)))
 }

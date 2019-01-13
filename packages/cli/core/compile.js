@@ -355,33 +355,35 @@ class Compile extends Hook {
   }
 
   output (item) {
-    let sfc = item.sfc;
-    let { script, styles, config, template } = sfc;
+    this.hookAsyncSeq('before-output-file', item).then(() => {
+      let sfc = item.sfc;
+      let { script, styles, config, template } = sfc;
+        
+      const outputMap = {
+        script: 'js',
+        styles: 'wxss',
+        config: 'json',
+        template: 'wxml'
+      };
+        
+      for (let k in outputMap) {
+        if (sfc[k] && sfc[k].outputCode) {
+          let filename = item.outputFile + '.' + outputMap[k];
+          let code = sfc[k].outputCode;
+            
+          this.hookAsyncSeq('output-file', { filename, code }).then(({ filename, code }) => {
+            logger.silly('output', 'write file: ' + filename);
+            fs.outputFile(filename, code, function (err) {
+              if (err) {
+                console.log(err);
+              }
+            });
+          })
 
-    const outputMap = {
-      script: 'js',
-      styles: 'wxss',
-      config: 'json',
-      template: 'wxml'
-    };
 
-    for (let k in outputMap) {
-      if (sfc[k] && sfc[k].outputCode) {
-        let filename = item.outputFile + '.' + outputMap[k];
-        let code = sfc[k].outputCode;
-
-        this.hookAsyncSeq('output-file', { filename, code }).then(({ filename, code }) => {
-          logger.silly('output', 'write file: ' + filename);
-          fs.outputFile(filename, code, function (err) {
-            if (err) {
-              console.log(err);
-            }
-          });
-        })
-
-
+        }
       }
-    }
+    })
   }
 }
 
