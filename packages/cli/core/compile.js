@@ -358,7 +358,8 @@ class Compile extends Hook {
   }
 
   outputFile (filename, code, encoding) {
-    this.hookAsyncSeq('output-file', { filename, code, encoding })
+    this.hookAsyncSeq('before-output-file', { filename, code, encoding })
+      .then(({ filename, code, encoding }) => this.hookAsyncSeq('output-file', { filename, code, encoding }))
       .then(({ filename, code, encoding }) => {
         if (!code) {
           logger.silly('output', 'empty content: ' + filename);
@@ -378,22 +379,24 @@ class Compile extends Hook {
     let filename, code, encoding;
 
     if (type === 'wpy') {
-      const sfc = item.sfc;
-      const outputMap = {
-        script: 'js',
-        styles: 'wxss',
-        config: 'json',
-        template: 'wxml'
-      };
+      this.hookAsyncSeq('before-output', item).then(item => {
+        const sfc = item.sfc;
+        const outputMap = {
+          script: 'js',
+          styles: 'wxss',
+          config: 'json',
+          template: 'wxml'
+        };
+          
+        Object.keys(outputMap).forEach(k => {
+          if (sfc[k] && sfc[k].outputCode) {
+            filename = item.outputFile + '.' + outputMap[k];
+            code = sfc[k].outputCode;
 
-      Object.keys(outputMap).forEach(k => {
-        if (sfc[k] && sfc[k].outputCode) {
-          filename = item.outputFile + '.' + outputMap[k];
-          code = sfc[k].outputCode;
-
-          this.outputFile(filename, code, encoding);
-        }
-      })
+            this.outputFile(filename, code, encoding);
+          }
+        })
+      });
     } else {
       filename = item.targetFile;
       code = item.outputCode;

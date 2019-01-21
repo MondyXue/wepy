@@ -19,6 +19,8 @@ const DEFAULT_OPTIONS = {
   'resolve': { type: Object, default: {} },
   'compilers': { type: Object },
   'plugins': { type: Array, default: []},
+  'before-output': { type: Array, default: []},
+  'before-output-file': { type: Array, default: []},
   'appConfig': { type: Object },
   'appConfig.noPromiseAPI': { type: Array, default: []}
 };
