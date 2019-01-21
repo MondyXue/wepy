@@ -17,8 +17,8 @@ exports = module.exports = function () {
 
       config.outputCode = JSON.stringify(config.parsed.output, null, 4);
 
-      this.hookSeq('script-dep-fix', script.parsed);
-      this.hookSeq('script-injection', script.parsed, template.parsed.rel);
+      this.hook('script-dep-fix', script.parsed);
+      this.hook('script-injection', script.parsed, template.parsed.rel);
 
       script.outputCode = script.parsed.source.source();
 

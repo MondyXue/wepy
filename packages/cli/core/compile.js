@@ -134,17 +134,17 @@ class Compile extends Hook {
         if (!Array.isArray(data))
           data = [data];
 
-        data.forEach(v => this.output(v));
+        data.forEach(v => this.output('wpy', v));
       });
     });
 
     this.register('output-vendor', function (data) {
-      fs.writeFileSync(data.targetFile, data.outputCode, 'utf-8');
+      this.output('vendor', data);
     });
 
     this.register('output-assets', function (list) {
       list.forEach(file => {
-        fs.outputFile(file.targetFile, file.outputCode, file.encoding || 'utf-8');
+        this.output('assets', file);
       });
     });
 
@@ -304,7 +304,7 @@ class Compile extends Hook {
         let absolutePath = path.resolve(filepath);
         if (this.involved[absolutePath]) {
           this.logger.silly('watch', `Watcher triggered by file changes: ${absolutePath}`);
-          this.clear('watch').start();
+          this.start();
         }
       }
     })
@@ -312,15 +312,11 @@ class Compile extends Hook {
 
   applyCompiler (node, ctx) {
     let compiler;
+
+    ctx.id = this.assets.add(ctx.file);
+
     if (node.lang) {
       let compilerOptions = this.options.compilers[node.lang] || [];
-
-      /*
-      if (['css', 'wxss', 'wxml', 'js', 'json'].indexOf(node.lang) > -1) {
-        let parser = this.parsers[node.type];
-        node.code = node.content;
-        return parser.parse(node, ctx);
-      }*/
 
       let hookKey = 'wepy-compiler-' + node.lang;
 
@@ -329,8 +325,15 @@ class Compile extends Hook {
       }
 
       this.involved[ctx.file] = 1;
-      return this.hookUnique(hookKey, node, ctx)
-        .then(node => {
+
+      let task;
+
+      if (ctx.useCache && node.compiled) { // If file is not changed, and compiled cache exsit.
+        task = Promise.resolve(node);
+      } else {
+        task = this.hookUnique(hookKey, node, ctx);
+      }
+      return task.then(node => {
           return this.hookAsyncSeq('before-wepy-parser-' + node.type, { node, ctx });
         })
         .then(({ node, ctx }) => {
@@ -354,33 +357,49 @@ class Compile extends Hook {
     return targetFile;
   }
 
-  output (item) {
-    let sfc = item.sfc;
-    let { script, styles, config, template } = sfc;
-
-    const outputMap = {
-      script: 'js',
-      styles: 'wxss',
-      config: 'json',
-      template: 'wxml'
-    };
-
-    for (let k in outputMap) {
-      if (sfc[k] && sfc[k].outputCode) {
-        let filename = item.outputFile + '.' + outputMap[k];
-        let code = sfc[k].outputCode;
-
-        this.hookAsyncSeq('output-file', { filename, code }).then(({ filename, code }) => {
+  outputFile (filename, code, encoding) {
+    this.hookAsyncSeq('output-file', { filename, code, encoding })
+      .then(({ filename, code, encoding }) => {
+        if (!code) {
+          logger.silly('output', 'empty content: ' + filename);
+        } else {
           logger.silly('output', 'write file: ' + filename);
-          fs.outputFile(filename, code, function (err) {
+
+          fs.outputFile(filename, code, encoding || 'utf-8', (err) => {
             if (err) {
               console.log(err);
             }
           });
-        })
+        }
+      });
+  }
 
+  output (type, item) {
+    let filename, code, encoding;
 
-      }
+    if (type === 'wpy') {
+      const sfc = item.sfc;
+      const outputMap = {
+        script: 'js',
+        styles: 'wxss',
+        config: 'json',
+        template: 'wxml'
+      };
+
+      Object.keys(outputMap).forEach(k => {
+        if (sfc[k] && sfc[k].outputCode) {
+          filename = item.outputFile + '.' + outputMap[k];
+          code = sfc[k].outputCode;
+
+          this.outputFile(filename, code, encoding);
+        }
+      })
+    } else {
+      filename = item.targetFile;
+      code = item.outputCode;
+      encoding = item.encoding;
+
+      this.outputFile(filename, code, encoding);
     }
   }
 }

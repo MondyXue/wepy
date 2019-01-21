@@ -228,7 +228,7 @@ exports = module.exports = function () {
         str += '<' + item.name;
         if (item.events) {
           item.events.forEach(evt => {
-            item.parsedAttr['data-wpy-evt'] = evt.evtid;
+            item.parsedAttr['data-wpy-evt'] = evt.id;
             item.parsedAttr[evt.type] = '_proxy';
             evt.params.forEach((p, i) => {
               if (i > 26) { // Maxium params.
@@ -275,7 +275,7 @@ exports = module.exports = function () {
 
     return toAST(html).then((ast) => {
 
-      let rel = { handlers: [], components: components, on: {}};
+      let rel = { handlers: {}, components: components, on: {}};
       let scope = null;
 
       [ast, scope, rel] = this.hookSeq('template-parse-ast', ast, null, rel, ctx);

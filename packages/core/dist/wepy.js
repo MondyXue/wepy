@@ -1219,15 +1219,15 @@ var Watcher = function Watcher (vm, expOrFn, cb, options, isRenderWatcher) {
   if (options) {
     this.deep = !!options.deep;
     this.user = !!options.user;
-    this.lazy = !!options.lazy;
+    this.computed = !!options.computed;
     this.sync = !!options.sync;
   } else {
-    this.deep = this.user = this.lazy = this.sync = false;
+    this.deep = this.user = this.computed = this.sync = false;
   }
   this.cb = cb;
   this.id = ++uid$1; // uid for batching
   this.active = true;
-  this.dirty = this.lazy; // for lazy watchers
+  this.dirty = this.computed; // for computed watchers
   this.deps = [];
   this.newDeps = [];
   this.depIds = new _Set();
@@ -1249,7 +1249,7 @@ var Watcher = function Watcher (vm, expOrFn, cb, options, isRenderWatcher) {
       );
     }
   }
-  this.value = this.lazy
+  this.value = this.computed
     ? undefined
     : this.get();
 };
@@ -1323,7 +1323,7 @@ Watcher.prototype.cleanupDeps = function cleanupDeps () {
  */
 Watcher.prototype.update = function update () {
   /* istanbul ignore else */
-  if (this.lazy) {
+  if (this.computed) {
     this.dirty = true;
   } else if (this.sync) {
     this.run();
@@ -1365,20 +1365,25 @@ Watcher.prototype.run = function run () {
 
 /**
  * Evaluate the value of the watcher.
- * This only gets called for lazy watchers.
+ * This only gets called for computed watchers.
  */
 Watcher.prototype.evaluate = function evaluate () {
-  this.value = this.get();
-  this.dirty = false;
+  if (this.dirty) {
+    this.value = this.get();
+    this.dirty = false;
+  }
+  return this.value;
 };
 
 /**
  * Depend on all deps collected by this watcher.
  */
 Watcher.prototype.depend = function depend () {
-  var i = this.deps.length;
-  while (i--) {
-    this.deps[i].depend();
+  if (Dep.target) {
+    var i = this.deps.length;
+    while (i--) {
+      this.deps[i].depend();
+    }
   }
 };
 
@@ -1405,13 +1410,8 @@ function createComputedGetter (key) {
   return function computedGetter () {
     var watcher = this._computedWatchers && this._computedWatchers[key];
     if (watcher) {
-      if (watcher.dirty) {
-        watcher.evaluate();
-      }
-      if (Dep.target) {
-        watcher.depend();
-      }
-      return watcher.value;
+      watcher.depend();
+      return watcher.evaluate();
     }
   }
 }
@@ -1424,7 +1424,7 @@ function initComputed (vm, computed) {
     return;
   }
   var watchers = vm._computedWatchers = Object.create(null);
-  var computedWatcherOptions = { lazy: false };
+  var computedWatcherOptions = { computed: true };
 
   Object.keys(computed).forEach(function (key) {
     var def$$1 = computed[key];
@@ -2210,8 +2210,9 @@ function patchMixins (output, option, mixins) {
   }
 
   if (!globalMixinPatched) {
-    var globalMixin = $global.mixin || {};
-    mixins = [globalMixin].concat(mixins);
+    var globalMixin = $global.mixin || [];
+
+    mixins = globalMixin.concat(mixins);
     globalMixinPatched = true;
   }
 
@@ -2321,19 +2322,7 @@ function use (plugin) {
 function mixin (options) {
   if ( options === void 0 ) options = {};
 
-  if (isPlainObject(options)) {
-    $global.mixin = options;
-  } else {
-    console.error(
-      'Mixin global api supports plain object only\n\n' +
-      'e.g: \n\n' +
-      'wepy.mixin({\n' +
-      '  created () {\n' +
-      '    console.log(\'global mixin created\')\n' +
-      '  }\n' +
-      '})'
-    );
-  }
+  $global.mixin = ($global.mixin || []).concat(options);
 }
 
 var wepy = Base;
